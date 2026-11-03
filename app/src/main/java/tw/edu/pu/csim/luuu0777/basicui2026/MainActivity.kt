@@ -78,20 +78,32 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
+fun Main(modifier: Modifier = Modifier) {
+// 記錄目前是否播放 love 影片
+    var isLoveVideo by remember { mutableStateOf(true) }
+    Box(modifier = modifier.fillMaxSize().background(Color(0xffE0BBE4))) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
 
-fun Main( modifier: Modifier = Modifier) {
-
-    Box() {
-        LazyColumnExample(modifier)
-        ColumnExample(modifier)
-        TextFieldExample(modifier)
-        LazyRowExample(modifier)
-        SimpleVideoPlayer(R.raw.love)
-
+// 1. 播放影片 (根據狀態選擇 R.raw.love 或 R.raw.handpan)
+            val currentVideoRes = if (isLoveVideo) R.raw.love else R.raw.handpan
+            SimpleVideoPlayer(videoRes = currentVideoRes)
+            Spacer(modifier = Modifier.height(12.dp))
+// 2. 切換影片按鈕
+            Button(onClick = { isLoveVideo = !isLoveVideo })
+            {
+                Text(text = if (isLoveVideo) "切換至手碟影片" else "切換至Love影片")
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+// 3. 動物卡片
+            LazyRowExample()
+        }
+// 4. 底部的輸入框區塊
+        TextFieldExample(modifier = Modifier.fillMaxSize())
     }
-
 }
-
 @Composable
 fun LazyColumnExample( modifier: Modifier = Modifier) {
     LazyColumn(
@@ -106,8 +118,8 @@ fun LazyColumnExample( modifier: Modifier = Modifier) {
         }
         item{ Text("結尾列")}
     }
-
 }
+
 @Composable
 fun ColumnExample(modifier: Modifier = Modifier) {
     var msg by remember { mutableStateOf(value="")}
@@ -249,26 +261,22 @@ fun SimpleVideoPlayer(
     @RawRes videoRes: Int
 ) {
     val context = LocalContext.current
-
-// 建立並記住 ExoPlayer 實體，設定影片路徑與自動播放
     val exoPlayer = remember {
         ExoPlayer.Builder(context).build().apply {
-            val uri = "android.resource://${context.packageName}/$videoRes"
-            setMediaItem(MediaItem.fromUri(uri))
-            prepare()
-            playWhenReady = true // 載入完成自動播放
+            playWhenReady = true
         }
     }
-
-// 利用 DisposableEffect 管理生命週期
-// 離開畫面時自動釋放記憶體
+// 當傳入的 videoRes 改變時重新準備影片資源
+    LaunchedEffect(videoRes) {
+        val uri = "android.resource://${context.packageName}/$videoRes"
+        exoPlayer.setMediaItem(MediaItem.fromUri(uri))
+        exoPlayer.prepare()
+    }
     DisposableEffect(Unit) {
         onDispose {
-            exoPlayer.release() // 💡 釋放播放器資源
+            exoPlayer.release()
         }
     }
-
-//將原生的 PlayerView 嵌入 Compose
     AndroidView(
         factory = { ctx ->
             PlayerView(ctx).apply {
@@ -277,6 +285,6 @@ fun SimpleVideoPlayer(
         },
         modifier = Modifier
             .fillMaxWidth()
-            .height(200.dp)
+            .height(220.dp)
     )
 }
